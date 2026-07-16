@@ -83,6 +83,7 @@ header{position:relative;overflow:hidden;background:linear-gradient(145deg,var(-
 .tb-btn.wide{margin-left:auto}
 .tb-user{color:#fff;font-weight:800;font-size:13px;display:flex;align-items:center;gap:8px}
 .tb-user .dot{width:8px;height:8px;border-radius:50%;background:#4ADE80}
+@media(max-width:600px){.topbar .logo-slot{display:none}.tb-user{flex:1 1 100%;margin-bottom:6px;font-size:13px}.tb-btn.wide{margin-left:0}.tb-btn{flex:1 1 40%;justify-content:center;padding:9px 8px;font-size:11.5px}}
 .hero-inner{display:grid;grid-template-columns:1fr auto;align-items:center;gap:32px}
 @media(max-width:600px){.hero-inner{grid-template-columns:1fr}}
 .h-tag{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.26);backdrop-filter:blur(12px);border-radius:100px;padding:5px 14px;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,.9);margin-bottom:14px;font-weight:700}
@@ -366,7 +367,7 @@ html[data-landing="azul"]{--lp-main:#2F6BFF;--lp-main2:#6E9BFF;--lp-dark:#1E4FD8
 .lc-switch{text-align:center;margin-top:18px;font-size:13px;color:#8a85a0}
 .lc-switch b{color:var(--lp-main);cursor:pointer;font-weight:700}
 .land-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;max-width:1180px;width:100%;margin:0 auto;padding:10px clamp(16px,4vw,48px) 26px}
-@media(max-width:640px){.land-stats{grid-template-columns:1fr}}
+@media(max-width:640px){.land-stats{display:none}.land-hero .feature{display:none}.land-sub{margin-bottom:6px}}
 .stat{display:flex;align-items:center;gap:12px;background:rgba(255,255,255,.6);border:1px solid rgba(0,0,0,.05);border-radius:16px;padding:14px 18px}
 .stat-ico{width:38px;height:38px;border-radius:11px;background:var(--lp-pale);display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0}
 .stat-tt{font-family:'Poppins',sans-serif;font-weight:700;font-size:13px;color:var(--lp-ink)}
@@ -435,7 +436,8 @@ footer.credit{background:var(--surface);border-top:1px solid var(--border);paddi
         <div class="field"><label>Data de início</label><input id="ob-inicio" type="date"></div>
         <div class="field"><label>Peso inicial (kg)</label><input id="ob-pini" type="number" step="0.1" placeholder="85"></div>
         <div class="field"><label>Meta (kg)</label><input id="ob-meta" type="number" step="0.1" placeholder="65"></div>
-        <div class="field"><label>Dose</label><input id="ob-dose" value="TIRZEC 2,5mg"></div>
+        <div id="ob-marca-slot"></div>
+        <div class="field"><label>Dose (ex.: 2,5mg)</label><input id="ob-dosemg" value="2,5mg"></div>
         <div class="field"><label>Dia da aplicação 💉</label><select id="ob-diaap" class="dia-sel"></select></div>
         <div class="field"><label>Dia das medidas 📐</label><select id="ob-diamed" class="dia-sel"></select></div>
         <div class="field"><label>Dia da composição 🧬</label><select id="ob-diabio" class="dia-sel"></select></div>
@@ -468,6 +470,22 @@ footer.credit{background:var(--surface);border-top:1px solid var(--border);paddi
       <button class="btn" onclick="location.reload()">🔄 Já fui aprovada, verificar</button>
       <div class="auth-switch"><button class="btn-ghost" onclick="logout()">Sair</button></div>
       <div class="credit-slot" style="margin-top:18px;font-size:11px;color:var(--muted);text-align:center"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ REDEFINIR SENHA ═══════ -->
+<div id="screen-reset" class="screen">
+  <div class="center-wrap">
+    <div class="auth-card">
+      <div class="logo-slot" data-mk="30" data-fs="19" style="display:flex;justify-content:center;margin-bottom:14px"></div>
+      <div class="auth-title" style="text-align:center">Definir nova senha</div>
+      <div class="auth-sub" style="text-align:center">Escolha sua nova senha de acesso.</div>
+      <div class="auth-msg" id="rs-msg"></div>
+      <div class="field"><label>Nova senha</label><input type="password" id="rs-pass" placeholder="mínimo 6 caracteres" autocomplete="new-password"></div>
+      <div class="field"><label>Repita a nova senha</label><input type="password" id="rs-pass2" placeholder="repita a senha" autocomplete="new-password"></div>
+      <button class="btn btn-brand" onclick="saveNewPassword()">Salvar nova senha</button>
+      <div class="auth-switch" style="margin-top:12px;text-align:center"><button class="btn-ghost" onclick="window.location.href=window.location.pathname">Voltar ao login</button></div>
     </div>
   </div>
 </div>
@@ -507,6 +525,7 @@ footer.credit{background:var(--surface);border-top:1px solid var(--border);paddi
 </header>
 
 <main>
+<div id="ap-reminder" style="display:none"></div>
 <div class="last-up">Atualizado: <span id="last-up">—</span></div>
 
 <div class="phase-banner">
@@ -581,10 +600,11 @@ footer.credit{background:var(--surface);border-top:1px solid var(--border);paddi
 </div>
 
 <div id="dose-section" style="display:none">
-<div class="stitle"><span class="stitle-text">💉 Histórico de Dose</span><span class="stitle-line"></span></div>
+<div class="stitle"><span class="stitle-text">💉 Aplicações</span><span class="stitle-line"></span></div>
 <div class="tbl-wrap">
-  <div class="tbl-hdr"><h3>Mudanças de Dose</h3><span class="badge" id="dose-badge">—</span></div>
+  <div class="tbl-hdr"><h3>Histórico de aplicações</h3><span class="badge" id="dose-badge">—</span></div>
   <div id="dose-timeline" style="padding:2px 16px 8px"></div>
+  <div class="show-more-wrap" id="ap-smw" style="display:none"><button class="show-more-btn" id="ap-smb" onclick="toggleAp()">Ver todas ▼</button></div>
 </div>
 </div>
 
@@ -701,7 +721,7 @@ const SUPABASE_KEY='sb_publishable_nBsIVd6BztKKLayIOOIvWQ_vN7Fehe5';
 const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 
 /* ═══════════ ESTADO ═══════════ */
-let currentUser=null, myProfile=null, isAdmin=false;
+let currentUser=null, myProfile=null, isAdmin=false, recoveryMode=false;
 let viewProfile=null, viewUid=null;   // perfil sendo exibido (pode ser outro, se admin)
 let authMode='login';
 
@@ -751,8 +771,10 @@ function showTip(x,y,html){tip.innerHTML=html;tip.style.opacity='1';const tw=tip
 function hideTip(){tip.style.opacity='0'}
 
 /* ═══════════ SCREENS ═══════════ */
-function showScreen(name){['auth','onboarding','pending','app'].forEach(s=>$('screen-'+s).classList.toggle('on',s===name));$('fab').classList.toggle('on',name==='app'&&!viewingOther());$('loading').classList.add('out');}
+function showScreen(name){['auth','onboarding','pending','app','reset'].forEach(s=>$('screen-'+s).classList.toggle('on',s===name));$('fab').classList.toggle('on',name==='app'&&canEdit());$('loading').classList.add('out');}
 function viewingOther(){return viewUid && viewUid!==currentUser.id;}
+function canEdit(){return !viewingOther()||isAdmin;}
+function targetUid(){return viewingOther()?viewUid:currentUser.id;}
 
 /* ═══════════ AUTH ═══════════ */
 function authMsg(el,type,text){const e=$(el);e.className='auth-msg '+type;e.textContent=text;}
@@ -797,7 +819,9 @@ async function logout(){await sb.auth.signOut();location.reload();}
 /* ═══════════ BOOT ═══════════ */
 async function boot(){
   $('loading').classList.remove('out');
+  if(recoveryMode||/type=recovery/.test(window.location.hash)){showScreen('reset');return;}
   const {data:{session}}=await sb.auth.getSession();
+  if(recoveryMode){showScreen('reset');return;}
   if(!session){showScreen('auth');return;}
   currentUser=session.user;
   // admin?
@@ -826,6 +850,7 @@ function prepOnboarding(){
     box.appendChild(l);
   });
   $('ob-inicio').value=isoDate(new Date());
+  $('ob-marca-slot').innerHTML=marcaFieldHtml('ob-marca','ob-marca-outra','');
 }
 function obThemePreview(){applyTheme($('ob-sexo').value==='M'?'verde':'rosa');}
 async function saveOnboarding(){
@@ -833,13 +858,14 @@ async function saveOnboarding(){
   if(!nome){authMsg('ob-msg','err','Informe seu nome.');return;}
   const sexo=$('ob-sexo').value;
   const ativas=[...$('ob-medchecks').querySelectorAll('input:checked')].map(i=>i.value);
+  const obMarca=readMarca('ob-marca','ob-marca-outra'),obDose=$('ob-dosemg').value.trim();
   const perfil={
     user_id:currentUser.id, nome, sexo,
     altura:parseFloat($('ob-altura').value)||null,
     data_inicio:$('ob-inicio').value||null,
     peso_inicial:parseFloat($('ob-pini').value)||null,
     meta:parseFloat($('ob-meta').value)||null,
-    dose:$('ob-dose').value||'TIRZEC 2,5mg',
+    dose:((obMarca?obMarca+' ':'')+obDose).trim()||'—',
     dia_aplicacao:+$('ob-diaap').value, dia_medidas:+$('ob-diamed').value, dia_bio:+$('ob-diabio').value,
     tema:sexo==='M'?'verde':'rosa', usa_bio:$('ob-usabio').checked, medidas_ativas:ativas
   };
@@ -847,6 +873,7 @@ async function saveOnboarding(){
   const {error}=await sb.from('perfis').upsert(perfil);
   btn.disabled=false;
   if(error){authMsg('ob-msg','err','Erro ao salvar: '+error.message);return;}
+  if(obMarca&&obDose){await sb.from('doses').upsert({user_id:currentUser.id,data:perfil.data_inicio||isoDate(new Date()),marca:obMarca,dose:obDose},{onConflict:'user_id,data'});}
   myProfile=perfil;
   if(isAdmin){await loadAndRender(currentUser.id);$('tb-admin').style.display='flex';showScreen('app');}
   else showScreen('pending');
@@ -874,8 +901,8 @@ async function loadAndRender(uid){
   // banner admin vendo outro
   const other=viewingOther();
   $('view-banner').classList.toggle('on',other);
-  if(other)$('view-banner').innerHTML='👑 Você está vendo o perfil de <strong>'+viewProfile.nome+'</strong> <button onclick="loadAndRender(currentUser.id).then(()=>{$(\'view-banner\').classList.remove(\'on\')})">Voltar ao meu</button>';
-  $('fab').classList.toggle('on',!other);
+  if(other)$('view-banner').innerHTML='👑 Você está vendo e editando o perfil de <strong>'+viewProfile.nome+'</strong> <button onclick="loadAndRender(currentUser.id).then(()=>{$(\'view-banner\').classList.remove(\'on\')})">Voltar ao meu</button>';
+  $('fab').classList.toggle('on',canEdit());
 }
 function buildRenderData(perf,pes,med,bio,dos){
   const info={nome:perf.nome,altura:perf.altura,dataInicio:perf.data_inicio,pesoInicial:perf.peso_inicial,meta:perf.meta};
@@ -924,7 +951,7 @@ function drawSparkline(canvas,data,color,filled){
   const li=data.length-1;ctx.beginPath();ctx.arc(sx(li),sy(data[li]),3,0,Math.PI*2);ctx.fillStyle='#fff';ctx.fill();ctx.strokeStyle=color;ctx.lineWidth=1.8;ctx.stroke();
 }
 
-let dadosGlobais=[],avg7Global=[],periodoAtivo=0,metaGlobal=57,doseMarkers=[];
+let dadosGlobais=[],avg7Global=[],periodoAtivo=0,metaGlobal=57,doseMarkers=[],curDoseGlobal='';
 function setPeriod(days,btn){periodoAtivo=days;document.querySelectorAll('.pbtn').forEach(b=>b.classList.remove('on'));btn.classList.add('on');const s=days>0?dadosGlobais.slice(-days):dadosGlobais;if(s.length>=2)desenharGraficoPeso($('peso-canvas'),s);}
 function desenharGraficoPeso(canvas,dados){
   const dpr=window.devicePixelRatio||1,W=Math.max(canvas.parentElement.clientWidth||400,320),H=220;canvas.width=W*dpr;canvas.height=H*dpr;canvas.style.width=W+'px';canvas.style.height=H+'px';
@@ -992,29 +1019,60 @@ function renderCorpo(medidas){
   },350);
 }
 
-let todosPesos=[],mostrandoTudo=false;
+let todosPesos=[],mostrandoTudo=false,dosesGlobais=[],mostrarTodasAp=false;
 function renderPesos(rows,all){
-  const pre=rows.filter(r=>r.peso!=null),exib=all?pre:pre.slice(-7);const tbody=$('tbody-pesos');tbody.innerHTML='';const own=!viewingOther();
+  const pre=rows.filter(r=>r.peso!=null),exib=all?pre:pre.slice(-7);const tbody=$('tbody-pesos');tbody.innerHTML='';const own=canEdit();
   exib.forEach(row=>{const ri=rows.indexOf(row),av=row.peso!=null&&avg7Global[ri]!=null?fmt2(avg7Global[ri]):'—';const tr=document.createElement('tr');
     tr.innerHTML='<td>'+fmtD(row.data)+'</td><td style="font-size:10px;color:var(--muted);font-weight:600">'+row.dia+'</td><td><strong>'+(row.peso!=null?fmt2(row.peso):'—')+'</strong></td><td class="'+varCls(row.varDia)+'">'+fmtVar(row.varDia)+'</td><td class="'+varCls(row.varInicio)+'">'+fmtVar(row.varInicio)+'</td><td class="'+(row.pctPerdida!=null?(row.pctPerdida>=0?'vn':'vp'):'')+'">'+(row.pctPerdida!=null?(row.pctPerdida*100).toFixed(2)+'%':'—')+'</td><td>'+(row.imc!=null?fmt2(row.imc):'—')+'</td><td style="color:#7C3AED;font-weight:700">'+av+'</td><td class="obs-cell">'+(row.obs||'')+'</td><td>'+(own?'<button class="del-btn" title="Apagar" onclick="delRow(\'pesagens\',\''+row.id+'\')">🗑</button>':'')+'</td>';
     tbody.appendChild(tr);});
   txt('badge-pesos',pre.length+' pesos');const w=$('smw'),b=$('smb');if(pre.length>7){w.style.display='block';b.textContent=all?'Ver menos ▲':'Ver todos os '+pre.length+' dias ▼';}else w.style.display='none';
 }
 function togglePesos(){mostrandoTudo=!mostrandoTudo;renderPesos(todosPesos,mostrandoTudo);}
+function toggleAp(){mostrarTodasAp=!mostrarTodasAp;renderDoses(dosesGlobais);}
 function renderDoses(doses){
+  dosesGlobais=doses;
   const sec=$('dose-section');
   if(!doses||!doses.length){sec.style.display='none';return;}
-  sec.style.display='block';const own=!viewingOther();
-  txt('dose-badge',doses.length+(doses.length>1?' mudanças':' registro'));
-  const cont=$('dose-timeline');cont.innerHTML='';const hoje=isoDate(new Date());
-  doses.forEach((d,i)=>{const next=doses[i+1];const vigente=(d.data<=hoje)&&(!next||next.data>hoje);
+  sec.style.display='block';const own=canEdit();
+  const reais=doses.filter(d=>!d.pulou);
+  txt('dose-badge',reais.length+(reais.length===1?' aplicação':' aplicações'));
+  const cont=$('dose-timeline');cont.innerHTML='';
+  const latest=reais.length?reais[reais.length-1]:null;
+  const ordered=[...doses].reverse();
+  const N=4,show=mostrarTodasAp?ordered:ordered.slice(0,N);
+  show.forEach(d=>{const vigente=(d===latest);
+    const del=own?'<button class="del-btn" onclick="delRow(\'doses\',\''+d.id+'\')" style="flex:0 0 auto">🗑</button>':'';
     const row=document.createElement('div');row.style.cssText='display:flex;align-items:flex-start;gap:12px;padding:12px 2px;border-bottom:1px solid rgba(0,0,0,.06)';
-    row.innerHTML='<div style="width:12px;height:12px;border-radius:50%;margin-top:4px;flex:0 0 auto;background:'+(vigente?T.main:'rgba(0,0,0,.18)')+'"></div>'+
-      '<div style="flex:1"><div style="font-weight:800;font-size:15px;color:var(--ink)">'+(d.dose||'—')+(vigente?' <span style="font-size:10px;font-weight:800;color:'+T.main+';background:rgba('+T.rgb+',.12);padding:2px 7px;border-radius:20px;margin-left:4px">DOSE ATUAL</span>':'')+'</div>'+
-      '<div style="font-size:12px;color:var(--muted);margin-top:2px">a partir de '+fmtD(d.data)+(next?' · até '+fmtD(next.data):'')+'</div>'+
-      (d.obs?'<div style="font-size:12.5px;color:#666;margin-top:4px">'+d.obs+'</div>':'')+'</div>'+
-      (own?'<button class="del-btn" onclick="delRow(\'doses\',\''+d.id+'\')" style="flex:0 0 auto">🗑</button>':'');
+    if(d.pulou){
+      row.innerHTML='<div style="width:12px;height:12px;border-radius:50%;margin-top:4px;flex:0 0 auto;background:rgba(0,0,0,.15)"></div><div style="flex:1"><div style="font-weight:800;font-size:14px;color:var(--muted)">⏭️ Semana pulada</div><div style="font-size:12px;color:var(--muted);margin-top:2px">📅 '+fmtD(d.data)+'</div>'+(d.obs?'<div style="font-size:12.5px;color:#666;margin-top:4px">'+d.obs+'</div>':'')+'</div>'+del;
+    } else {
+      row.innerHTML='<div style="width:12px;height:12px;border-radius:50%;margin-top:4px;flex:0 0 auto;background:'+(vigente?T.main:'rgba(0,0,0,.18)')+'"></div>'+
+        '<div style="flex:1"><div style="font-weight:800;font-size:15px;color:var(--ink)">'+(((d.marca?d.marca+' ':'')+(d.dose||'')).trim()||'—')+(vigente?' <span style="font-size:10px;font-weight:800;color:'+T.main+';background:rgba('+T.rgb+',.12);padding:2px 7px;border-radius:20px;margin-left:4px">ATUAL</span>':'')+'</div>'+
+        '<div style="font-size:12px;color:var(--muted);margin-top:2px">📅 '+fmtD(d.data)+'</div>'+
+        (d.obs?'<div style="font-size:12.5px;color:#666;margin-top:4px">'+d.obs+'</div>':'')+'</div>'+del;
+    }
     cont.appendChild(row);});
+  const smw=$('ap-smw'),smb=$('ap-smb');
+  if(ordered.length>N){smw.style.display='block';smb.textContent=mostrarTodasAp?'Ver menos ▲':('Ver todas as '+ordered.length+' aplicações ▼');}
+  else smw.style.display='none';
+}
+function renderApReminder(doses){
+  const el=$('ap-reminder');if(!el)return;
+  const dia=viewProfile.dia_aplicacao;
+  if(viewingOther()||dia==null){el.style.display='none';return;}
+  const t=new Date();t.setHours(0,0,0,0);
+  const exp=new Date(t);exp.setDate(t.getDate()-((t.getDay()-dia+7)%7));
+  const expIso=isoDate(exp),last=doses.length?doses[doses.length-1].data:null;
+  if(last&&last>=expIso){el.style.display='none';return;}
+  const dnome=exp.toLocaleDateString('pt-BR',{weekday:'long'}),dcurta=exp.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'});
+  el.style.cssText='margin:0 0 14px;background:rgba('+T.rgb+',.10);border:1px solid rgba('+T.rgb+',.28);border-radius:14px;padding:14px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap';
+  el.innerHTML='<span style="font-size:22px">💉</span><div style="flex:1;min-width:180px"><div style="font-weight:800;color:'+T.main+';font-size:14px">Aplicação pendente</div><div style="font-size:13px;color:var(--ink)">Sua aplicação de '+dnome+' ('+dcurta+') ainda não foi registrada.</div></div><button class="btn" style="width:auto;padding:9px 16px" onclick="abrirAplicacao(\''+expIso+'\')">Registrar agora</button><button class="btn btn-sec" style="width:auto;padding:9px 14px" onclick="pularSemana(\''+expIso+'\')">Pular esta semana</button>';
+}
+async function pularSemana(dataIso){
+  if(!confirm('Marcar a aplicação desta semana ('+fmtD(dataIso)+') como pulada? Ela ficará registrada como "semana pulada".'))return;
+  const {error}=await sb.from('doses').upsert({user_id:targetUid(),data:dataIso,pulou:true},{onConflict:'user_id,data',ignoreDuplicates:true});
+  if(error)return alert('Erro: '+error.message);
+  await loadAndRender(targetUid());
 }
 
 /* ═══════════ BIO (motor original) ═══════════ */
@@ -1056,7 +1114,7 @@ function desenharGraficoBio(canvas,bio){
 function renderBio(bio){
   renderBioComp(bio);
   if(bio.length>=2){$('bio-chart-box').style.display='block';setTimeout(()=>desenharGraficoBio($('bio-canvas'),bio),150);}else $('bio-chart-box').style.display='none';
-  if(bio.length>0){$('bio-tbl-wrap').style.display='block';const tbody=$('tbody-bio');tbody.innerHTML='';const own=!viewingOther();
+  if(bio.length>0){$('bio-tbl-wrap').style.display='block';const tbody=$('tbody-bio');tbody.innerHTML='';const own=canEdit();
     bio.forEach((row,i)=>{const prev=i>0?bio[i-1]:null;const ds=(k,dec,suf)=>{const v=row[k];if(v==null)return'—';const pv=prev?prev[k]:null,d=pv!=null?v-pv:null,dS=d!=null?'<br><span style="font-size:9px;font-weight:800;color:'+(d<0?'#16A34A':d>0?'#DC2626':'#999')+'">'+(d===0?'=':(d>0?'+':'')+d.toFixed(dec))+'</span>':'';return v.toFixed(dec)+(suf||'')+dS;};const ds100=(k,dec,suf)=>{const v=row[k];if(v==null)return'—';const pv=prev?prev[k]:null,d=pv!=null?(v-pv)*100:null,dS=d!=null?'<br><span style="font-size:9px;font-weight:800;color:'+(d<0?'#16A34A':d>0?'#DC2626':'#999')+'">'+(d===0?'=':(d>0?'+':'')+d.toFixed(dec))+'</span>':'';return (v*100).toFixed(dec)+(suf||'')+dS;};
       const tr=document.createElement('tr');tr.innerHTML='<td>'+fmtD(row.data)+'</td><td>'+ds('peso',2)+'</td><td>'+ds('imc',2)+'</td><td>'+ds100('gordPct',2,'%')+'</td><td>'+ds('gordKg',2)+'</td><td>'+ds('massaMuscTotal',2)+'</td><td>'+ds100('aguaPct',2,'%')+'</td><td>'+(row.gordVisceral!=null?row.gordVisceral:'—')+'</td><td>'+(own?'<button class="del-btn" onclick="delRow(\'bioimpedancia\',\''+row.id+'\')">🗑</button>':'')+'</td>';tbody.appendChild(tr);});
   }else $('bio-tbl-wrap').style.display='none';
@@ -1066,8 +1124,9 @@ function renderBio(bio){
 function render(data){
   const{info,diario,medidas,doses}=data;
   const hoje=isoDate(new Date());
-  const doseVigente=(doses&&doses.length)?(doses.filter(d=>d.data<=hoje).slice(-1)[0]||doses[0]):null;
-  const curDose=doseVigente?doseVigente.dose:(viewProfile.dose||'');
+  const _reais=(doses||[]).filter(d=>!d.pulou);
+  const doseVigente=_reais.length?(_reais.filter(d=>d.data<=hoje).slice(-1)[0]||_reais[_reais.length-1]):null;
+  const curDose=doseVigente?((doseVigente.marca?doseVigente.marca+' ':'')+(doseVigente.dose||'')).trim():(viewProfile.dose||'');curDoseGlobal=curDose;
   txt('tb-name',(info.nome||'—')+(viewingOther()?'':' (você)'));
   txt('h-nome',info.nome||'');txt('h-tag','💊 '+(curDose||'Tirzepatida'));
   txt('h-alt',info.altura?String(info.altura).replace('.',',')+'m':'—');
@@ -1109,19 +1168,20 @@ function render(data){
     $('wc-grid').innerHTML='<p style="color:var(--muted);font-size:13px;grid-column:1/-1;padding:8px">Ainda sem pesagens para comparar.</p>';
   }
 
-  doseMarkers=(doses||[]).map(d=>({data:d.data,dose:d.dose}));
+  doseMarkers=[];_reais.forEach((d,i)=>{const prev=_reais[i-1];if(!prev||prev.dose!==d.dose||prev.marca!==d.marca)doseMarkers.push({data:d.data,dose:d.dose});});
   const dadosG=diario.filter(r=>r.peso!=null).map(r=>({x:fmtD(r.data),y:r.peso,iso:r.data}));dadosGlobais=dadosG;avg7Global=rollingAvg(diario.map(r=>r.peso),7);
   if(dadosG.length>=2){setTimeout(()=>{desenharGraficoPeso($('peso-canvas'),dadosG);const vel=calcVelocity(dadosG);if(vel.length)desenharVelocidade($('vel-canvas'),vel);},160);}
   else{const ctx=$('peso-canvas').getContext('2d');ctx.clearRect(0,0,9999,9999);}
 
   renderDoses(doses||[]);
+  renderApReminder(doses||[]);
   todosPesos=diario;renderPesos(diario,mostrandoTudo);
   renderCorpo(medidas);
   const comDados=medidas.filter(m=>medKeys.some(k=>m[k]!=null));
   if(medKeys.some(k=>comDados.filter(m=>m[k]!=null).length>=2)){$('med-chart-box').style.display='block';renderMedFilter(comDados);}else $('med-chart-box').style.display='none';
   // cabeçalho tabela medidas dinâmico
   $('med-thead').innerHTML='<th>Semana</th>'+medKeys.map((k,i)=>'<th>'+medLabels[i]+'</th>').join('')+'<th></th>';
-  const tbM=$('tbody-med');tbM.innerHTML='';const own=!viewingOther();
+  const tbM=$('tbody-med');tbM.innerHTML='';const own=canEdit();
   medidas.forEach((row,i)=>{const prev=i>0?medidas[i-1]:null;const tr=document.createElement('tr');tr.innerHTML='<td style="font-weight:800;color:var(--teal)">'+fmtD(row.data)+'<br><span style="font-size:9px;color:var(--muted);font-weight:500">'+(sem[i]||(i+1)+'ª')+' sem.</span></td>'+medKeys.map(k=>{const v=row[k];if(v==null)return '<td><span style="color:#ddd">—</span></td>';const pv=prev?prev[k]:null,d=pv!=null?v-pv:null,ds=d!=null?'<span style="font-size:9px;font-weight:800;'+(d<0?'color:#16A34A':d>0?'color:#DC2626':'color:#999')+'">'+(d===0?'=':d<0?d.toFixed(2):'+'+d.toFixed(2))+'</span>':'';return '<td>'+fmt2(v)+' '+ds+'</td>';}).join('')+'<td>'+(own?'<button class="del-btn" onclick="delRow(\'medidas\',\''+row.id+'\')">🗑</button>':'')+'</td>';tbM.appendChild(tr);});
 
   txt('last-up',new Date().toLocaleString('pt-BR'));
@@ -1132,14 +1192,22 @@ async function delRow(tabela,id){
   if(!confirm('Apagar este registro?'))return;
   const {error}=await sb.from(tabela).delete().eq('id',id);
   if(error){alert('Erro: '+error.message);return;}
-  await loadAndRender(currentUser.id);
+  await loadAndRender(targetUid());
 }
 function inp(label,id,type,val,step){return '<div class="field"><label>'+label+'</label><input id="'+id+'" type="'+(type||'number')+'" '+(step?'step="'+step+'"':'')+' value="'+(val??'')+'"></div>';}
+const MARCAS=['Mounjaro','Tirzec','Tg','Lipoless','Lipoland','Tirzedral','T36','Gluconex'];
+function marcaFieldHtml(selId,txtId,cur){
+  cur=cur||'';const known=MARCAS.includes(cur);const showTxt=!!cur&&!known;
+  const opts='<option value="">Selecione…</option>'+MARCAS.map(m=>'<option value="'+m+'"'+(cur===m?' selected':'')+'>'+m+'</option>').join('')+'<option value="__outra__"'+(showTxt?' selected':'')+'>Outra…</option>';
+  return '<div class="field"><label>Marca</label><select id="'+selId+'" onchange="toggleOutra(\''+selId+'\',\''+txtId+'\')">'+opts+'</select><input id="'+txtId+'" type="text" placeholder="Escreva a marca" value="'+(showTxt?cur:'')+'" style="display:'+(showTxt?'block':'none')+';margin-top:6px"></div>';
+}
+function toggleOutra(selId,txtId){$(txtId).style.display=$(selId).value==='__outra__'?'block':'none';}
+function readMarca(selId,txtId){const v=$(selId).value;return v==='__outra__'?$(txtId).value.trim():v;}
 function openModal(kind){
-  const body=$('modal-body');txt('modal-title','Adicionar / Editar');
+  const body=$('modal-body');txt('modal-title',viewingOther()?'Adicionar — '+(viewProfile.nome||''):'Adicionar / Editar');
   const today=isoDate(new Date());
   const usaBio=viewProfile.usa_bio;
-  let tabsHtml='<div class="tabs"><button class="tab on" data-p="pes" onclick="switchTab(this)">⚖️ Peso</button><button class="tab" data-p="med" onclick="switchTab(this)">📐 Medidas</button>'+(usaBio?'<button class="tab" data-p="bio" onclick="switchTab(this)">🧬 Composição</button>':'')+'<button class="tab" data-p="dose" onclick="switchTab(this)">💉 Dose</button></div>';
+  let tabsHtml='<div class="tabs"><button class="tab on" data-p="pes" onclick="switchTab(this)">⚖️ Peso</button><button class="tab" data-p="med" onclick="switchTab(this)">📐 Medidas</button>'+(usaBio?'<button class="tab" data-p="bio" onclick="switchTab(this)">🧬 Composição</button>':'')+'<button class="tab" data-p="dose" onclick="switchTab(this)">💉 Aplicação</button></div>';
   // Peso
   let pes='<div class="tab-pane on" id="pane-pes"><div class="auth-sub" style="text-align:left;margin:0 0 12px">Salvar em uma data que já existe = editar aquele dia.</div>'+inp('Data','f-pes-data','date',today)+inp('Peso (kg)','f-pes-peso','number','','0.01')+'<div class="field"><label>Observação</label><input id="f-pes-obs" type="text" value=""></div><button class="btn" onclick="savePeso()">Salvar peso</button></div>';
   // Medidas
@@ -1147,42 +1215,44 @@ function openModal(kind){
   // Bio
   let bio='';
   if(usaBio)bio='<div class="tab-pane" id="pane-bio">'+inp('Data','f-bio-data','date',isoDate(nextByDay(viewProfile.dia_bio??6)))+inp('Peso (kg)','f-bio-peso','number','','0.01')+inp('IMC (deixe vazio p/ calcular)','f-bio-imc','number','','0.01')+inp('Gordura (%)','f-bio-gpct','number','','0.1')+inp('Gordura (kg)','f-bio-gkg','number','','0.1')+inp('Massa Muscular Total (kg)','f-bio-mtot','number','','0.1')+inp('Massa Muscular Membro (kg)','f-bio-mesq','number','','0.1')+inp('Água (%)','f-bio-agua','number','','0.1')+inp('Gordura Visceral (nível)','f-bio-visc','number','','1')+'<button class="btn" onclick="saveBio()">Salvar composição</button></div>';
-  let dose='<div class="tab-pane" id="pane-dose"><div class="auth-sub" style="text-align:left;margin:0 0 12px">Registre aqui quando a dose <b>mudar</b>. Quem mantém a mesma dose não precisa preencher nada.</div>'+inp('Data da mudança','f-dose-data','date',today)+'<div class="field"><label>Dose (ex.: 5 mg)</label><input id="f-dose-val" type="text" placeholder="5 mg"></div><div class="field"><label>Observação (opcional)</label><input id="f-dose-obs" type="text" placeholder="ex.: aumentei por orientação médica"></div><button class="btn" onclick="saveDose()">Salvar dose</button></div>';
+  let dose='<div class="tab-pane" id="pane-dose"><div class="auth-sub" style="text-align:left;margin:0 0 12px">Registre cada aplicação: dia que tomou, marca e dose. A dose atual é sempre a da última aplicação.</div>'+inp('Data da aplicação','f-dose-data','date',today)+marcaFieldHtml('f-dose-marca','f-dose-marca-outra','')+'<div class="field"><label>Dose (ex.: 2,5mg)</label><input id="f-dose-val" type="text" placeholder="2,5mg"></div><div class="field"><label>Observação (opcional)</label><input id="f-dose-obs" type="text" placeholder="ex.: subiu a dose / troquei de marca"></div><button class="btn" onclick="saveDose()">Salvar aplicação</button></div>';
   body.innerHTML=tabsHtml+pes+med+bio+dose;
   $('modal-ov').classList.add('on');
 }
+function abrirAplicacao(dataIso){openModal('add');const t=document.querySelector('.tab[data-p="dose"]');if(t)switchTab(t);if(dataIso&&$('f-dose-data'))$('f-dose-data').value=dataIso;}
 function switchTab(btn){document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));btn.classList.add('on');document.querySelectorAll('.tab-pane').forEach(p=>p.classList.remove('on'));$('pane-'+btn.dataset.p).classList.add('on');}
 function closeModal(){$('modal-ov').classList.remove('on');}
 const num=id=>{const v=$(id).value;return v===''?null:parseFloat(v);};
 async function savePeso(){
   const data=$('f-pes-data').value;if(!data)return alert('Informe a data.');
-  const {error}=await sb.from('pesagens').upsert({user_id:currentUser.id,data,peso:num('f-pes-peso'),obs:$('f-pes-obs').value||null},{onConflict:'user_id,data'});
-  if(error)return alert('Erro: '+error.message);closeModal();await loadAndRender(currentUser.id);
+  const {error}=await sb.from('pesagens').upsert({user_id:targetUid(),data,peso:num('f-pes-peso'),obs:$('f-pes-obs').value||null},{onConflict:'user_id,data'});
+  if(error)return alert('Erro: '+error.message);closeModal();await loadAndRender(targetUid());
 }
 async function saveDose(){
   const data=$('f-dose-data').value;if(!data)return alert('Informe a data.');
-  const dose=$('f-dose-val').value.trim();if(!dose)return alert('Informe a dose (ex.: 5 mg).');
-  const {error}=await sb.from('doses').upsert({user_id:currentUser.id,data,dose,obs:$('f-dose-obs').value||null},{onConflict:'user_id,data'});
-  if(error)return alert('Erro: '+error.message);closeModal();await loadAndRender(currentUser.id);
+  const marca=readMarca('f-dose-marca','f-dose-marca-outra');if(!marca)return alert('Selecione a marca.');
+  const dose=$('f-dose-val').value.trim();if(!dose)return alert('Informe a dose (ex.: 2,5mg).');
+  const {error}=await sb.from('doses').upsert({user_id:targetUid(),data,marca,dose,obs:$('f-dose-obs').value||null},{onConflict:'user_id,data'});
+  if(error)return alert('Erro: '+error.message);closeModal();await loadAndRender(targetUid());
 }
 async function saveMed(){
   const data=$('f-med-data').value;if(!data)return alert('Informe a data.');
-  const row={user_id:currentUser.id,data};medKeys.forEach(k=>row[camelToSnake[k]]=num('f-med-'+k));
+  const row={user_id:targetUid(),data};medKeys.forEach(k=>row[camelToSnake[k]]=num('f-med-'+k));
   const {error}=await sb.from('medidas').upsert(row,{onConflict:'user_id,data'});
-  if(error)return alert('Erro: '+error.message);closeModal();await loadAndRender(currentUser.id);
+  if(error)return alert('Erro: '+error.message);closeModal();await loadAndRender(targetUid());
 }
 async function saveBio(){
   const data=$('f-bio-data').value;if(!data)return alert('Informe a data.');
   let imc=num('f-bio-imc');const peso=num('f-bio-peso');if(imc==null&&peso&&viewProfile.altura)imc=+(peso/(viewProfile.altura*viewProfile.altura)).toFixed(2);
   const gpct=num('f-bio-gpct'),agua=num('f-bio-agua');
-  const row={user_id:currentUser.id,data,peso,imc,gord_pct:gpct!=null?gpct/100:null,gord_kg:num('f-bio-gkg'),massa_musc_total:num('f-bio-mtot'),massa_musc_esq:num('f-bio-mesq'),agua_pct:agua!=null?agua/100:null,gord_visceral:num('f-bio-visc')};
+  const row={user_id:targetUid(),data,peso,imc,gord_pct:gpct!=null?gpct/100:null,gord_kg:num('f-bio-gkg'),massa_musc_total:num('f-bio-mtot'),massa_musc_esq:num('f-bio-mesq'),agua_pct:agua!=null?agua/100:null,gord_visceral:num('f-bio-visc')};
   const {error}=await sb.from('bioimpedancia').upsert(row,{onConflict:'user_id,data'});
-  if(error)return alert('Erro: '+error.message);closeModal();await loadAndRender(currentUser.id);
+  if(error)return alert('Erro: '+error.message);closeModal();await loadAndRender(targetUid());
 }
 
 /* ═══════════ CONFIG (editar perfil) ═══════════ */
 function openConfig(){
-  const p=myProfile;txt('modal-title','⚙️ Meu Perfil');
+  const p=viewingOther()?viewProfile:myProfile;txt('modal-title',viewingOther()?'⚙️ Perfil de '+(p.nome||''):'⚙️ Meu Perfil');
   const diaSel=(id,v)=>'<select id="'+id+'">'+DIAS.map((d,i)=>'<option value="'+i+'"'+(i===v?' selected':'')+'>'+d+'</option>').join('')+'</select>';
   const medChecks=MED_ORDER.map(k=>{const on=(p.medidas_ativas||[]).includes(k);return '<label class="chk'+(on?' on':'')+'"><input type="checkbox" value="'+k+'" '+(on?'checked':'')+' onchange="this.parentNode.classList.toggle(\'on\',this.checked)"> '+MED_MASTER[k].ico+' '+MED_MASTER[k].lbl+'</label>';}).join('');
   $('modal-body').innerHTML='<div class="auth-msg" id="cf-msg"></div><div class="form-grid">'+
@@ -1192,7 +1262,7 @@ function openConfig(){
     '<div class="field"><label>Data início</label><input id="cf-inicio" type="date" value="'+(p.data_inicio||'')+'"></div>'+
     '<div class="field"><label>Peso inicial</label><input id="cf-pini" type="number" step="0.1" value="'+(p.peso_inicial??'')+'"></div>'+
     '<div class="field"><label>Meta (kg)</label><input id="cf-meta" type="number" step="0.1" value="'+(p.meta??'')+'"></div>'+
-    '<div class="field full"><label>Dose</label><input id="cf-dose" value="'+(p.dose||'')+'"></div>'+
+    '<div class="field full"><label>Dose / Marca</label><div style="font-size:12px;color:var(--muted);padding:2px 0">Gerencie no ➕ → aba 💉 Dose (histórico de mudanças). Atual: <b>'+(curDoseGlobal||'—')+'</b></div></div>'+
     '<div class="field"><label>Dia aplicação 💉</label>'+diaSel('cf-diaap',p.dia_aplicacao??6)+'</div>'+
     '<div class="field"><label>Dia medidas 📐</label>'+diaSel('cf-diamed',p.dia_medidas??6)+'</div>'+
     '<div class="field"><label>Dia composição 🧬</label>'+diaSel('cf-diabio',p.dia_bio??6)+'</div>'+
@@ -1203,10 +1273,11 @@ function openConfig(){
 }
 async function saveConfig(){
   const ativas=[...$('cf-medchecks').querySelectorAll('input:checked')].map(i=>i.value);
-  const upd={nome:$('cf-nome').value.trim(),sexo:$('cf-sexo').value,tema:$('cf-sexo').value==='M'?'verde':'rosa',altura:parseFloat($('cf-altura').value)||null,data_inicio:$('cf-inicio').value||null,peso_inicial:parseFloat($('cf-pini').value)||null,meta:parseFloat($('cf-meta').value)||null,dose:$('cf-dose').value,dia_aplicacao:+$('cf-diaap').value,dia_medidas:+$('cf-diamed').value,dia_bio:+$('cf-diabio').value,usa_bio:$('cf-usabio').checked,medidas_ativas:ativas};
-  const {error}=await sb.from('perfis').update(upd).eq('user_id',currentUser.id);
+  const upd={nome:$('cf-nome').value.trim(),sexo:$('cf-sexo').value,tema:$('cf-sexo').value==='M'?'verde':'rosa',altura:parseFloat($('cf-altura').value)||null,data_inicio:$('cf-inicio').value||null,peso_inicial:parseFloat($('cf-pini').value)||null,meta:parseFloat($('cf-meta').value)||null,dia_aplicacao:+$('cf-diaap').value,dia_medidas:+$('cf-diamed').value,dia_bio:+$('cf-diabio').value,usa_bio:$('cf-usabio').checked,medidas_ativas:ativas};
+  const uid=targetUid();
+  const {error}=await sb.from('perfis').update(upd).eq('user_id',uid);
   if(error){authMsg('cf-msg','err','Erro: '+error.message);return;}
-  myProfile={...myProfile,...upd};closeModal();await loadAndRender(currentUser.id);
+  if(uid===currentUser.id)myProfile={...myProfile,...upd};closeModal();await loadAndRender(uid);
 }
 
 /* ═══════════ ADMIN ═══════════ */
@@ -1235,13 +1306,24 @@ var CREDIT='Desenvolvido por <b>Luiza Ribeiro de Melo</b><span class="sep">·</s
 function renderCredit(){document.querySelectorAll('.credit-slot').forEach(function(e){e.innerHTML=CREDIT;});}
 function setLanding(t,btn){document.documentElement.setAttribute('data-landing',t);try{localStorage.setItem('meumon_landing',t);}catch(e){}document.querySelectorAll('.tt-btn').forEach(function(b){b.classList.toggle('on',b.dataset.t===t);});}
 function togglePw(btn){var i=$('au-pass');i.type=i.type==='password'?'text':'password';btn.textContent=i.type==='password'?'👁':'🙈';}
-async function forgotPass(){var email=$('au-email').value.trim();if(!email)return authMsg('auth-msg','err','Digite seu e-mail no campo acima primeiro.');const {error}=await sb.auth.resetPasswordForEmail(email);authMsg('auth-msg',error?'err':'ok',error?error.message:'Se esse e-mail estiver cadastrado, enviamos um link de redefinição. 📧');}
+async function forgotPass(){var email=$('au-email').value.trim();if(!email)return authMsg('auth-msg','err','Digite seu e-mail no campo acima primeiro.');const {error}=await sb.auth.resetPasswordForEmail(email,{redirectTo:window.location.origin+window.location.pathname});authMsg('auth-msg',error?'err':'ok',error?error.message:'Se esse e-mail estiver cadastrado, enviamos um link de redefinição. 📧 (confira também o spam)');}
+async function saveNewPassword(){
+  const p1=$('rs-pass').value, p2=$('rs-pass2').value;
+  if(!p1||p1.length<6)return authMsg('rs-msg','err','A senha precisa ter no mínimo 6 caracteres.');
+  if(p1!==p2)return authMsg('rs-msg','err','As senhas não coincidem.');
+  const {error}=await sb.auth.updateUser({password:p1});
+  if(error)return authMsg('rs-msg','err',error.message);
+  recoveryMode=false;
+  authMsg('rs-msg','ok','Senha alterada com sucesso! Entrando…');
+  setTimeout(()=>{try{history.replaceState(null,'',window.location.pathname);}catch(e){}window.location.href=window.location.pathname;},1300);
+}
 
 /* ═══════════ INIT ═══════════ */
 (function(){var t='rosa';try{t=localStorage.getItem('meumon_landing')||'rosa';}catch(e){}document.documentElement.setAttribute('data-landing',t);})();
 renderLogos();renderCredit();
 document.querySelectorAll('.tt-btn').forEach(function(b){b.classList.toggle('on',b.dataset.t===document.documentElement.getAttribute('data-landing'));});
 document.addEventListener('click',e=>{if(e.target.id==='modal-ov')closeModal();});
+sb.auth.onAuthStateChange((event)=>{if(event==='PASSWORD_RECOVERY'){recoveryMode=true;showScreen('reset');}});
 boot();
 </script>
 </body>
