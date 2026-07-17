@@ -412,7 +412,7 @@ footer.credit{background:var(--surface);border-top:1px solid var(--border);paddi
       </div>
     </div>
     <div class="land-stats">
-      <div class="stat"><div class="stat-ico">📈</div><div><div class="stat-tt">Controle diário</div><div class="stat-ds">peso, medidas e composição</div></div></div>
+      <div class="stat"><div class="stat-ico">📈</div><div><div class="stat-tt">Controle diário</div><div class="stat-ds">peso, medidas e bioimpedância</div></div></div>
       <div class="stat"><div class="stat-ico">🧠</div><div><div class="stat-tt">Análises inteligentes</div><div class="stat-ds">fases, projeções e insights</div></div></div>
       <div class="stat"><div class="stat-ico">💉</div><div><div class="stat-tt">Controle de dose</div><div class="stat-ds">registre mudanças de dosagem</div></div></div>
     </div>
@@ -440,11 +440,12 @@ footer.credit{background:var(--surface);border-top:1px solid var(--border);paddi
         <div class="field"><label>Dose (ex.: 2,5mg)</label><input id="ob-dosemg" value="2,5mg"></div>
         <div class="field"><label>Dia da aplicação 💉</label><select id="ob-diaap" class="dia-sel"></select></div>
         <div class="field"><label>Dia das medidas 📐</label><select id="ob-diamed" class="dia-sel"></select></div>
-        <div class="field"><label>Dia da composição 🧬</label><select id="ob-diabio" class="dia-sel"></select></div>
+        <div class="field"><label>Bioimpedância 🧬 — frequência</label><select id="ob-freqbio" onchange="toggleFreqBio('ob')"><option value="semanal">1x na semana</option><option value="mensal">1x no mês</option></select></div>
+        <div class="field" id="ob-diabio-wrap"><label>Dia da bioimpedância 🧬</label><select id="ob-diabio" class="dia-sel"></select></div>
         <div class="field full">
           <label>Seções ativas</label>
           <div class="checks">
-            <label class="chk"><input type="checkbox" id="ob-usabio" checked> 🧬 Composição Corporal</label>
+            <label class="chk"><input type="checkbox" id="ob-usabio" checked> 🧬 Bioimpedância</label>
           </div>
         </div>
         <div class="field full">
@@ -638,9 +639,9 @@ footer.credit{background:var(--surface);border-top:1px solid var(--border);paddi
 </div>
 
 <div id="bio-section">
-<div class="stitle"><span class="stitle-text">🧬 Composição Corporal</span><span class="stitle-line"></span></div>
+<div class="stitle"><span class="stitle-text">🧬 Bioimpedância</span><span class="stitle-line"></span></div>
 <div class="bio-comp-card" id="bio-comp-card" style="display:none">
-  <div class="chart-ttl">Composição Atual</div>
+  <div class="chart-ttl">Bioimpedância Atual</div>
   <div class="chart-sub" id="bio-comp-date" style="margin-top:3px"></div>
   <div class="bio-stacked-wrap">
     <div class="bio-stacked-bar" id="bio-stacked-bar">
@@ -655,13 +656,13 @@ footer.credit{background:var(--surface);border-top:1px solid var(--border);paddi
   <div class="bio-metrics-grid" id="bio-metrics-grid"></div>
 </div>
 <div class="chart-box" id="bio-chart-box" style="display:none">
-  <div class="chart-hdr"><div><div class="chart-ttl">Evolução da Composição</div><div class="chart-sub">Massa magra vs gordura</div></div></div>
+  <div class="chart-hdr"><div><div class="chart-ttl">Evolução da Bioimpedância</div><div class="chart-sub">Massa magra vs gordura</div></div></div>
   <div class="chart-wrap"><canvas id="bio-canvas" height="200"></canvas></div>
 </div>
 <div class="tbl-wrap" id="bio-tbl-wrap" style="display:none">
-  <div class="tbl-hdr vl"><h3>Histórico de Bioimpedância</h3><span class="badge">semanal</span></div>
+  <div class="tbl-hdr vl"><h3>Histórico de Bioimpedância</h3><span class="badge" id="bio-badge">semanal</span></div>
   <div class="tbl-scroll"><table>
-    <thead class="vl-head"><tr><th>Data</th><th>Peso</th><th>IMC</th><th>Gord %</th><th>Gord kg</th><th>Músc.Total</th><th>Água %</th><th>Visceral</th><th></th></tr></thead>
+    <thead class="vl-head"><tr><th>Data</th><th>Peso</th><th>IMC</th><th>Gord %</th><th>Gord kg</th><th>Massa musc.</th><th>Água %</th><th>Visceral</th><th></th></tr></thead>
     <tbody id="tbody-bio"></tbody>
   </table></div>
 </div>
@@ -851,8 +852,18 @@ function prepOnboarding(){
   });
   $('ob-inicio').value=isoDate(new Date());
   $('ob-marca-slot').innerHTML=marcaFieldHtml('ob-marca','ob-marca-outra','');
+  if($('ob-freqbio')){$('ob-freqbio').value='semanal';toggleFreqBio('ob');}
 }
+/* mostra/esconde o "dia da semana" conforme a frequência da bioimpedância (semanal x mensal) */
+function toggleFreqBio(pfx){const f=$(pfx+'-freqbio'),wrap=$(pfx+'-diabio-wrap');if(f&&wrap)wrap.style.display=f.value==='mensal'?'none':'';}
 function obThemePreview(){applyTheme($('ob-sexo').value==='M'?'verde':'rosa');}
+/* grava em 'perfis' tolerando o caso da coluna bio_freq ainda não existir no banco */
+async function perfisWrite(op,payload,uid){
+  const attempt=pl=>op==='upsert'?sb.from('perfis').upsert(pl):sb.from('perfis').update(pl).eq('user_id',uid);
+  let res=await attempt(payload);
+  if(res.error&&/bio_freq/i.test(res.error.message||'')){const pl={...payload};delete pl.bio_freq;res=await attempt(pl);}
+  return res;
+}
 async function saveOnboarding(){
   const nome=$('ob-nome').value.trim();
   if(!nome){authMsg('ob-msg','err','Informe seu nome.');return;}
@@ -867,10 +878,11 @@ async function saveOnboarding(){
     meta:parseFloat($('ob-meta').value)||null,
     dose:((obMarca?obMarca+' ':'')+obDose).trim()||'—',
     dia_aplicacao:+$('ob-diaap').value, dia_medidas:+$('ob-diamed').value, dia_bio:+$('ob-diabio').value,
+    bio_freq:$('ob-freqbio')?$('ob-freqbio').value:'semanal',
     tema:sexo==='M'?'verde':'rosa', usa_bio:$('ob-usabio').checked, medidas_ativas:ativas
   };
   const btn=$('ob-btn');btn.disabled=true;
-  const {error}=await sb.from('perfis').upsert(perfil);
+  const {error}=await perfisWrite('upsert',perfil);
   btn.disabled=false;
   if(error){authMsg('ob-msg','err','Erro ao salvar: '+error.message);return;}
   if(obMarca&&obDose){await sb.from('doses').upsert({user_id:currentUser.id,data:perfil.data_inicio||isoDate(new Date()),marca:obMarca,dose:obDose},{onConflict:'user_id,data'});}
@@ -891,6 +903,7 @@ async function loadAndRender(uid){
   ]);
   viewProfile=perf.data;
   const data=buildRenderData(viewProfile, pes.data||[], med.data||[], bio.data||[], dos.data||[]);
+  _cur=data;
   applyTheme(viewProfile.tema);
   setupMedidas(viewProfile.medidas_ativas||MED_ORDER);
   montarSilhueta(viewProfile.sexo);
@@ -1020,10 +1033,13 @@ function renderCorpo(medidas){
 }
 
 let todosPesos=[],mostrandoTudo=false,dosesGlobais=[],mostrarTodasAp=false;
+let _cur={diario:[],medidas:[],bioimpedancia:[],doses:[]};   // dados carregados (p/ editar)
+let editIds={pes:null,med:null,bio:null,dose:null};           // id em edição por aba (null = novo)
+let modalMode='add';                                          // 'add' usa rascunho; 'edit' não
 function renderPesos(rows,all){
   const pre=rows.filter(r=>r.peso!=null),exib=all?pre:pre.slice(-7);const tbody=$('tbody-pesos');tbody.innerHTML='';const own=canEdit();
   exib.forEach(row=>{const ri=rows.indexOf(row),av=row.peso!=null&&avg7Global[ri]!=null?fmt2(avg7Global[ri]):'—';const tr=document.createElement('tr');
-    tr.innerHTML='<td>'+fmtD(row.data)+'</td><td style="font-size:10px;color:var(--muted);font-weight:600">'+row.dia+'</td><td><strong>'+(row.peso!=null?fmt2(row.peso):'—')+'</strong></td><td class="'+varCls(row.varDia)+'">'+fmtVar(row.varDia)+'</td><td class="'+varCls(row.varInicio)+'">'+fmtVar(row.varInicio)+'</td><td class="'+(row.pctPerdida!=null?(row.pctPerdida>=0?'vn':'vp'):'')+'">'+(row.pctPerdida!=null?(row.pctPerdida*100).toFixed(2)+'%':'—')+'</td><td>'+(row.imc!=null?fmt2(row.imc):'—')+'</td><td style="color:#7C3AED;font-weight:700">'+av+'</td><td class="obs-cell">'+(row.obs||'')+'</td><td>'+(own?'<button class="del-btn" title="Apagar" onclick="delRow(\'pesagens\',\''+row.id+'\')">🗑</button>':'')+'</td>';
+    tr.innerHTML='<td>'+fmtD(row.data)+'</td><td style="font-size:10px;color:var(--muted);font-weight:600">'+row.dia+'</td><td><strong>'+(row.peso!=null?fmt2(row.peso):'—')+'</strong></td><td class="'+varCls(row.varDia)+'">'+fmtVar(row.varDia)+'</td><td class="'+varCls(row.varInicio)+'">'+fmtVar(row.varInicio)+'</td><td class="'+(row.pctPerdida!=null?(row.pctPerdida>=0?'vn':'vp'):'')+'">'+(row.pctPerdida!=null?(row.pctPerdida*100).toFixed(2)+'%':'—')+'</td><td>'+(row.imc!=null?fmt2(row.imc):'—')+'</td><td style="color:#7C3AED;font-weight:700">'+av+'</td><td class="obs-cell">'+(row.obs||'')+'</td><td>'+(own?'<button class="del-btn" title="Editar" onclick="editPeso(\''+row.id+'\')">✏️</button> <button class="del-btn" title="Apagar" onclick="delRow(\'pesagens\',\''+row.id+'\')">🗑</button>':'')+'</td>';
     tbody.appendChild(tr);});
   txt('badge-pesos',pre.length+' pesos');const w=$('smw'),b=$('smb');if(pre.length>7){w.style.display='block';b.textContent=all?'Ver menos ▲':'Ver todos os '+pre.length+' dias ▼';}else w.style.display='none';
 }
@@ -1041,7 +1057,7 @@ function renderDoses(doses){
   const ordered=[...doses].reverse();
   const N=4,show=mostrarTodasAp?ordered:ordered.slice(0,N);
   show.forEach(d=>{const vigente=(d===latest);
-    const del=own?'<button class="del-btn" onclick="delRow(\'doses\',\''+d.id+'\')" style="flex:0 0 auto">🗑</button>':'';
+    const del=own?(d.pulou?'':'<button class="del-btn" title="Editar" onclick="editDose(\''+d.id+'\')" style="flex:0 0 auto">✏️</button> ')+'<button class="del-btn" onclick="delRow(\'doses\',\''+d.id+'\')" style="flex:0 0 auto">🗑</button>':'';
     const row=document.createElement('div');row.style.cssText='display:flex;align-items:flex-start;gap:12px;padding:12px 2px;border-bottom:1px solid rgba(0,0,0,.06)';
     if(d.pulou){
       row.innerHTML='<div style="width:12px;height:12px;border-radius:50%;margin-top:4px;flex:0 0 auto;background:rgba(0,0,0,.15)"></div><div style="flex:1"><div style="font-weight:800;font-size:14px;color:var(--muted)">⏭️ Semana pulada</div><div style="font-size:12px;color:var(--muted);margin-top:2px">📅 '+fmtD(d.data)+'</div>'+(d.obs?'<div style="font-size:12.5px;color:#666;margin-top:4px">'+d.obs+'</div>':'')+'</div>'+del;
@@ -1056,17 +1072,40 @@ function renderDoses(doses){
   if(ordered.length>N){smw.style.display='block';smb.textContent=mostrarTodasAp?'Ver menos ▲':('Ver todas as '+ordered.length+' aplicações ▼');}
   else smw.style.display='none';
 }
-function renderApReminder(doses){
+/* abre o modal já numa aba específica, com a data preenchida */
+function abrirAbaData(pane,dataIso,dateFieldId){openModal();const tb=document.querySelector('.tab[data-p="'+pane+'"]');if(tb)switchTab(tb);if(dataIso&&$(dateFieldId))$(dateFieldId).value=dataIso;}
+/* "dispensar" um lembrete (ex.: não me pesei hoje) — guardado no aparelho, sem ir pro banco */
+function remKey(type,key){return 'meumon_rem_'+(targetUid()||'x')+'_'+type+'_'+key;}
+function remDismissed(type,key){try{return localStorage.getItem(remKey(type,key))==='1';}catch(e){return false;}}
+function remDismiss(type,key){try{localStorage.setItem(remKey(type,key),'1');}catch(e){}renderReminders(_cur);}
+/* lembretes de preenchimento (aplicação, peso, medidas, bioimpedância) */
+function renderReminders(data){
   const el=$('ap-reminder');if(!el)return;
-  const dia=viewProfile.dia_aplicacao;
-  if(viewingOther()||dia==null){el.style.display='none';return;}
-  const t=new Date();t.setHours(0,0,0,0);
-  const exp=new Date(t);exp.setDate(t.getDate()-((t.getDay()-dia+7)%7));
-  const expIso=isoDate(exp),last=doses.length?doses[doses.length-1].data:null;
-  if(last&&last>=expIso){el.style.display='none';return;}
-  const dnome=exp.toLocaleDateString('pt-BR',{weekday:'long'}),dcurta=exp.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'});
-  el.style.cssText='margin:0 0 14px;background:rgba('+T.rgb+',.10);border:1px solid rgba('+T.rgb+',.28);border-radius:14px;padding:14px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap';
-  el.innerHTML='<span style="font-size:22px">💉</span><div style="flex:1;min-width:180px"><div style="font-weight:800;color:'+T.main+';font-size:14px">Aplicação pendente</div><div style="font-size:13px;color:var(--ink)">Sua aplicação de '+dnome+' ('+dcurta+') ainda não foi registrada.</div></div><button class="btn" style="width:auto;padding:9px 16px" onclick="abrirAplicacao(\''+expIso+'\')">Registrar agora</button><button class="btn btn-sec" style="width:auto;padding:9px 14px" onclick="pularSemana(\''+expIso+'\')">Pular esta semana</button>';
+  if(viewingOther()){el.style.display='none';el.innerHTML='';return;}
+  const t=new Date();t.setHours(0,0,0,0);const hoje=isoDate(t);
+  const lastOccur=dia=>{const e=new Date(t);e.setDate(t.getDate()-((t.getDay()-dia+7)%7));return e;};
+  const dLong=d=>d.toLocaleDateString('pt-BR',{weekday:'long'}),dShort=d=>d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'});
+  const cards=[];
+  const card=(ico,title,text,btns)=>'<div style="margin:0 0 10px;background:rgba('+T.rgb+',.10);border:1px solid rgba('+T.rgb+',.28);border-radius:14px;padding:14px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap"><span style="font-size:22px">'+ico+'</span><div style="flex:1;min-width:180px"><div style="font-weight:800;color:'+T.main+';font-size:14px">'+title+'</div><div style="font-size:13px;color:var(--ink)">'+text+'</div></div>'+btns+'</div>';
+  const bReg=(onclick,label)=>'<button class="btn" style="width:auto;padding:9px 16px" onclick="'+onclick+'">'+(label||'Registrar agora')+'</button>';
+  const bSec=(onclick,label)=>'<button class="btn btn-sec" style="width:auto;padding:9px 14px" onclick="'+onclick+'">'+label+'</button>';
+  // 1) Aplicação
+  const diaAp=viewProfile.dia_aplicacao;
+  if(diaAp!=null){const exp=lastOccur(diaAp),expIso=isoDate(exp),last=(data.doses||[]).length?data.doses[data.doses.length-1].data:null;
+    if(!(last&&last>=expIso))cards.push(card('💉','Aplicação pendente','Sua aplicação de '+dLong(exp)+' ('+dShort(exp)+') ainda não foi registrada.',bReg("abrirAplicacao('"+expIso+"')")+bSec("pularSemana('"+expIso+"')",'Pular esta semana')));}
+  // 2) Peso de hoje
+  if(!(data.diario||[]).some(r=>r.data===hoje&&r.peso!=null)&&!remDismissed('peso',hoje))
+    cards.push(card('⚖️','Peso de hoje','Você ainda não registrou seu peso de hoje ('+fmtD(hoje)+').',bReg("abrirAbaData('pes','"+hoje+"','f-pes-data')")+bSec("remDismiss('peso','"+hoje+"')",'Hoje não me pesei')));
+  // 3) Medidas
+  const diaM=viewProfile.dia_medidas;
+  if(diaM!=null){const exp=lastOccur(diaM),expIso=isoDate(exp),last=(data.medidas||[]).length?data.medidas[data.medidas.length-1].data:null;
+    if(!(last&&last>=expIso)&&!remDismissed('med',expIso))cards.push(card('📐','Medidas pendentes','Suas medidas de '+dLong(exp)+' ('+dShort(exp)+') ainda não foram registradas.',bReg("abrirAbaData('med','"+expIso+"','f-med-data')")+bSec("remDismiss('med','"+expIso+"')",'Não medi')));}
+  // 4) Bioimpedância (só se a seção estiver ativa)
+  if(viewProfile.usa_bio){const freq=viewProfile.bio_freq||'semanal',lastB=(data.bioimpedancia||[]).length?data.bioimpedancia[data.bioimpedancia.length-1].data:null;
+    if(freq==='mensal'){const ym=hoje.slice(0,7);if(!(lastB&&lastB.slice(0,7)>=ym)&&!remDismissed('bio',ym))cards.push(card('🧬','Bioimpedância do mês','Você ainda não registrou sua bioimpedância deste mês.',bReg("abrirAbaData('bio','"+hoje+"','f-bio-data')")+bSec("remDismiss('bio','"+ym+"')",'Não fiz este mês')));}
+    else{const diaB=viewProfile.dia_bio??6,exp=lastOccur(diaB),expIso=isoDate(exp);if(!(lastB&&lastB>=expIso)&&!remDismissed('bio',expIso))cards.push(card('🧬','Bioimpedância pendente','Sua bioimpedância de '+dLong(exp)+' ('+dShort(exp)+') ainda não foi registrada.',bReg("abrirAbaData('bio','"+expIso+"','f-bio-data')")+bSec("remDismiss('bio','"+expIso+"')",'Não fiz')));}}
+  if(!cards.length){el.style.display='none';el.innerHTML='';return;}
+  el.style.cssText='margin:0 0 14px';el.style.display='block';el.innerHTML=cards.join('');
 }
 async function pularSemana(dataIso){
   if(!confirm('Marcar a aplicação desta semana ('+fmtD(dataIso)+') como pulada? Ela ficará registrada como "semana pulada".'))return;
@@ -1112,11 +1151,12 @@ function desenharGraficoBio(canvas,bio){
   canvas.onmouseleave=hideTip;
 }
 function renderBio(bio){
+  if($('bio-badge'))$('bio-badge').textContent=(viewProfile.bio_freq==='mensal')?'mensal':'semanal';
   renderBioComp(bio);
   if(bio.length>=2){$('bio-chart-box').style.display='block';setTimeout(()=>desenharGraficoBio($('bio-canvas'),bio),150);}else $('bio-chart-box').style.display='none';
   if(bio.length>0){$('bio-tbl-wrap').style.display='block';const tbody=$('tbody-bio');tbody.innerHTML='';const own=canEdit();
     bio.forEach((row,i)=>{const prev=i>0?bio[i-1]:null;const ds=(k,dec,suf)=>{const v=row[k];if(v==null)return'—';const pv=prev?prev[k]:null,d=pv!=null?v-pv:null,dS=d!=null?'<br><span style="font-size:9px;font-weight:800;color:'+(d<0?'#16A34A':d>0?'#DC2626':'#999')+'">'+(d===0?'=':(d>0?'+':'')+d.toFixed(dec))+'</span>':'';return v.toFixed(dec)+(suf||'')+dS;};const ds100=(k,dec,suf)=>{const v=row[k];if(v==null)return'—';const pv=prev?prev[k]:null,d=pv!=null?(v-pv)*100:null,dS=d!=null?'<br><span style="font-size:9px;font-weight:800;color:'+(d<0?'#16A34A':d>0?'#DC2626':'#999')+'">'+(d===0?'=':(d>0?'+':'')+d.toFixed(dec))+'</span>':'';return (v*100).toFixed(dec)+(suf||'')+dS;};
-      const tr=document.createElement('tr');tr.innerHTML='<td>'+fmtD(row.data)+'</td><td>'+ds('peso',2)+'</td><td>'+ds('imc',2)+'</td><td>'+ds100('gordPct',2,'%')+'</td><td>'+ds('gordKg',2)+'</td><td>'+ds('massaMuscTotal',2)+'</td><td>'+ds100('aguaPct',2,'%')+'</td><td>'+(row.gordVisceral!=null?row.gordVisceral:'—')+'</td><td>'+(own?'<button class="del-btn" onclick="delRow(\'bioimpedancia\',\''+row.id+'\')">🗑</button>':'')+'</td>';tbody.appendChild(tr);});
+      const tr=document.createElement('tr');tr.innerHTML='<td>'+fmtD(row.data)+'</td><td>'+ds('peso',2)+'</td><td>'+ds('imc',2)+'</td><td>'+ds100('gordPct',2,'%')+'</td><td>'+ds('gordKg',2)+'</td><td>'+ds('massaMuscTotal',2)+'</td><td>'+ds100('aguaPct',2,'%')+'</td><td>'+(row.gordVisceral!=null?row.gordVisceral:'—')+'</td><td>'+(own?'<button class="del-btn" title="Editar" onclick="editBio(\''+row.id+'\')">✏️</button> <button class="del-btn" title="Apagar" onclick="delRow(\'bioimpedancia\',\''+row.id+'\')">🗑</button>':'')+'</td>';tbody.appendChild(tr);});
   }else $('bio-tbl-wrap').style.display='none';
 }
 
@@ -1174,7 +1214,7 @@ function render(data){
   else{const ctx=$('peso-canvas').getContext('2d');ctx.clearRect(0,0,9999,9999);}
 
   renderDoses(doses||[]);
-  renderApReminder(doses||[]);
+  renderReminders(data);
   todosPesos=diario;renderPesos(diario,mostrandoTudo);
   renderCorpo(medidas);
   const comDados=medidas.filter(m=>medKeys.some(k=>m[k]!=null));
@@ -1182,7 +1222,7 @@ function render(data){
   // cabeçalho tabela medidas dinâmico
   $('med-thead').innerHTML='<th>Semana</th>'+medKeys.map((k,i)=>'<th>'+medLabels[i]+'</th>').join('')+'<th></th>';
   const tbM=$('tbody-med');tbM.innerHTML='';const own=canEdit();
-  medidas.forEach((row,i)=>{const prev=i>0?medidas[i-1]:null;const tr=document.createElement('tr');tr.innerHTML='<td style="font-weight:800;color:var(--teal)">'+fmtD(row.data)+'<br><span style="font-size:9px;color:var(--muted);font-weight:500">'+(sem[i]||(i+1)+'ª')+' sem.</span></td>'+medKeys.map(k=>{const v=row[k];if(v==null)return '<td><span style="color:#ddd">—</span></td>';const pv=prev?prev[k]:null,d=pv!=null?v-pv:null,ds=d!=null?'<span style="font-size:9px;font-weight:800;'+(d<0?'color:#16A34A':d>0?'color:#DC2626':'color:#999')+'">'+(d===0?'=':d<0?d.toFixed(2):'+'+d.toFixed(2))+'</span>':'';return '<td>'+fmt2(v)+' '+ds+'</td>';}).join('')+'<td>'+(own?'<button class="del-btn" onclick="delRow(\'medidas\',\''+row.id+'\')">🗑</button>':'')+'</td>';tbM.appendChild(tr);});
+  medidas.forEach((row,i)=>{const prev=i>0?medidas[i-1]:null;const tr=document.createElement('tr');tr.innerHTML='<td style="font-weight:800;color:var(--teal)">'+fmtD(row.data)+'<br><span style="font-size:9px;color:var(--muted);font-weight:500">'+(sem[i]||(i+1)+'ª')+' sem.</span></td>'+medKeys.map(k=>{const v=row[k];if(v==null)return '<td><span style="color:#ddd">—</span></td>';const pv=prev?prev[k]:null,d=pv!=null?v-pv:null,ds=d!=null?'<span style="font-size:9px;font-weight:800;'+(d<0?'color:#16A34A':d>0?'color:#DC2626':'color:#999')+'">'+(d===0?'=':d<0?d.toFixed(2):'+'+d.toFixed(2))+'</span>':'';return '<td>'+fmt2(v)+' '+ds+'</td>';}).join('')+'<td>'+(own?'<button class="del-btn" title="Editar" onclick="editMed(\''+row.id+'\')">✏️</button> <button class="del-btn" title="Apagar" onclick="delRow(\'medidas\',\''+row.id+'\')">🗑</button>':'')+'</td>';tbM.appendChild(tr);});
 
   txt('last-up',new Date().toLocaleString('pt-BR'));
 }
@@ -1194,7 +1234,8 @@ async function delRow(tabela,id){
   if(error){alert('Erro: '+error.message);return;}
   await loadAndRender(targetUid());
 }
-function inp(label,id,type,val,step){return '<div class="field"><label>'+label+'</label><input id="'+id+'" type="'+(type||'number')+'" '+(step?'step="'+step+'"':'')+' value="'+(val??'')+'"></div>';}
+function inp(label,id,type,val,step,extra){type=type||'number';const def=(type==='date')?' data-def="'+(val??'')+'"':'';return '<div class="field"><label>'+label+'</label><input id="'+id+'" type="'+type+'" '+(step?'step="'+step+'"':'')+def+(extra||'')+' value="'+(val??'')+'"></div>';}
+const saveRow=(fn,label,kind)=>'<div style="display:flex;gap:8px;margin-top:6px"><button class="btn" style="flex:1" onclick="'+fn+'">'+label+'</button><button class="btn btn-sec" type="button" style="flex:0 0 auto;width:auto;padding:13px 16px" onclick="limparAba(\''+kind+'\')" title="Apagar o que está preenchido nesta aba">🧹 Limpar</button></div>';
 const MARCAS=['Mounjaro','Tirzec','Tg','Lipoless','Lipoland','Tirzedral','T36','Gluconex'];
 function marcaFieldHtml(selId,txtId,cur){
   cur=cur||'';const known=MARCAS.includes(cur);const showTxt=!!cur&&!known;
@@ -1203,51 +1244,90 @@ function marcaFieldHtml(selId,txtId,cur){
 }
 function toggleOutra(selId,txtId){$(txtId).style.display=$(selId).value==='__outra__'?'block':'none';}
 function readMarca(selId,txtId){const v=$(selId).value;return v==='__outra__'?$(txtId).value.trim():v;}
-function openModal(kind){
+function openModal(arg){
+  const ctx=(arg&&typeof arg==='object')?arg:null;   // {kind,row} = edição; senão = novo
   const body=$('modal-body');txt('modal-title',viewingOther()?'Adicionar — '+(viewProfile.nome||''):'Adicionar / Editar');
   const today=isoDate(new Date());
   const usaBio=viewProfile.usa_bio;
-  let tabsHtml='<div class="tabs"><button class="tab on" data-p="pes" onclick="switchTab(this)">⚖️ Peso</button><button class="tab" data-p="med" onclick="switchTab(this)">📐 Medidas</button>'+(usaBio?'<button class="tab" data-p="bio" onclick="switchTab(this)">🧬 Composição</button>':'')+'<button class="tab" data-p="dose" onclick="switchTab(this)">💉 Aplicação</button></div>';
+  const bioDef=(viewProfile.bio_freq==='mensal')?today:isoDate(nextByDay(viewProfile.dia_bio??6));
+  editIds={pes:null,med:null,bio:null,dose:null};
+  let tabsHtml='<div class="tabs"><button class="tab on" data-p="pes" onclick="switchTab(this)">⚖️ Peso</button><button class="tab" data-p="med" onclick="switchTab(this)">📐 Medidas</button>'+(usaBio?'<button class="tab" data-p="bio" onclick="switchTab(this)">🧬 Bioimpedância</button>':'')+'<button class="tab" data-p="dose" onclick="switchTab(this)">💉 Aplicação</button></div>';
   // Peso
-  let pes='<div class="tab-pane on" id="pane-pes"><div class="auth-sub" style="text-align:left;margin:0 0 12px">Salvar em uma data que já existe = editar aquele dia.</div>'+inp('Data','f-pes-data','date',today)+inp('Peso (kg)','f-pes-peso','number','','0.01')+'<div class="field"><label>Observação</label><input id="f-pes-obs" type="text" value=""></div><button class="btn" onclick="savePeso()">Salvar peso</button></div>';
+  let pes='<div class="tab-pane on" id="pane-pes"><div class="auth-sub" style="text-align:left;margin:0 0 12px">O que você digita fica guardado se sair sem querer. Use 🧹 Limpar para zerar.</div>'+inp('Data','f-pes-data','date',today)+inp('Peso (kg)','f-pes-peso','number','','0.01')+'<div class="field"><label>Observação</label><input id="f-pes-obs" type="text" value=""></div>'+saveRow('savePeso()','Salvar peso','pes')+'</div>';
   // Medidas
-  let med='<div class="tab-pane" id="pane-med">'+inp('Data (dia das medidas)','f-med-data','date',isoDate(nextByDay(viewProfile.dia_medidas??6)))+medKeys.map((k,i)=>inp(medLabels[i]+' (cm)','f-med-'+k,'number','','0.1')).join('')+'<button class="btn" onclick="saveMed()">Salvar medidas</button></div>';
-  // Bio
+  let med='<div class="tab-pane" id="pane-med">'+inp('Data (dia das medidas)','f-med-data','date',isoDate(nextByDay(viewProfile.dia_medidas??6)))+medKeys.map((k,i)=>inp(medLabels[i]+' (cm)','f-med-'+k,'number','','0.1')).join('')+saveRow('saveMed()','Salvar medidas','med')+'</div>';
+  // Bioimpedância
   let bio='';
-  if(usaBio)bio='<div class="tab-pane" id="pane-bio">'+inp('Data','f-bio-data','date',isoDate(nextByDay(viewProfile.dia_bio??6)))+inp('Peso (kg)','f-bio-peso','number','','0.01')+inp('IMC (deixe vazio p/ calcular)','f-bio-imc','number','','0.01')+inp('Gordura (%)','f-bio-gpct','number','','0.1')+inp('Gordura (kg)','f-bio-gkg','number','','0.1')+inp('Massa Muscular Total (kg)','f-bio-mtot','number','','0.1')+inp('Massa Muscular Membro (kg)','f-bio-mesq','number','','0.1')+inp('Água (%)','f-bio-agua','number','','0.1')+inp('Gordura Visceral (nível)','f-bio-visc','number','','1')+'<button class="btn" onclick="saveBio()">Salvar composição</button></div>';
-  let dose='<div class="tab-pane" id="pane-dose"><div class="auth-sub" style="text-align:left;margin:0 0 12px">Registre cada aplicação: dia que tomou, marca e dose. A dose atual é sempre a da última aplicação.</div>'+inp('Data da aplicação','f-dose-data','date',today)+marcaFieldHtml('f-dose-marca','f-dose-marca-outra','')+'<div class="field"><label>Dose (ex.: 2,5mg)</label><input id="f-dose-val" type="text" placeholder="2,5mg"></div><div class="field"><label>Observação (opcional)</label><input id="f-dose-obs" type="text" placeholder="ex.: subiu a dose / troquei de marca"></div><button class="btn" onclick="saveDose()">Salvar aplicação</button></div>';
+  if(usaBio)bio='<div class="tab-pane" id="pane-bio">'+inp('Data','f-bio-data','date',bioDef)+inp('Peso (kg)','f-bio-peso','number','','0.01')+inp('IMC (calculado automaticamente)','f-bio-imc','number','','0.01',' readonly title="Calculado a partir do peso e da altura" style="background:#f2eef4;color:var(--muted);cursor:not-allowed"')+inp('Gordura (%)','f-bio-gpct','number','','0.1')+inp('Gordura (kg)','f-bio-gkg','number','','0.1')+inp('Massa muscular (Kg)','f-bio-mtot','number','','0.1')+inp('Massa muscular esquelética (Kg)','f-bio-mesq','number','','0.1')+inp('Água (%)','f-bio-agua','number','','0.1')+inp('Gordura Visceral (nível)','f-bio-visc','number','','1')+saveRow('saveBio()','Salvar bioimpedância','bio')+'</div>';
+  let dose='<div class="tab-pane" id="pane-dose"><div class="auth-sub" style="text-align:left;margin:0 0 12px">Registre cada aplicação: dia que tomou, marca e dose. A dose atual é sempre a da última aplicação.</div>'+inp('Data da aplicação','f-dose-data','date',today)+marcaFieldHtml('f-dose-marca','f-dose-marca-outra','')+'<div class="field"><label>Dose (ex.: 2,5mg)</label><input id="f-dose-val" type="text" placeholder="2,5mg"></div><div class="field"><label>Observação (opcional)</label><input id="f-dose-obs" type="text" placeholder="ex.: subiu a dose / troquei de marca"></div>'+saveRow('saveDose()','Salvar aplicação','dose')+'</div>';
   body.innerHTML=tabsHtml+pes+med+bio+dose;
+  body.oninput=onModalInput;body.onchange=onModalInput;
+  if(ctx){modalMode='edit';fillEdit(ctx.kind,ctx.row);const tb=document.querySelector('.tab[data-p="'+ctx.kind+'"]');if(tb)switchTab(tb);}
+  else{modalMode='add';restoreDraft();}
   $('modal-ov').classList.add('on');
 }
-function abrirAplicacao(dataIso){openModal('add');const t=document.querySelector('.tab[data-p="dose"]');if(t)switchTab(t);if(dataIso&&$('f-dose-data'))$('f-dose-data').value=dataIso;}
+function abrirAplicacao(dataIso){openModal();const t=document.querySelector('.tab[data-p="dose"]');if(t)switchTab(t);if(dataIso&&$('f-dose-data'))$('f-dose-data').value=dataIso;}
+/* ── IMC ao vivo (campo travado) ── */
+function calcImcLive(){const el=$('f-bio-imc');if(!el)return;const peso=num('f-bio-peso'),alt=viewProfile.altura;el.value=(peso&&alt)?(peso/(alt*alt)).toFixed(2):'';}
+/* ── rascunho: guarda o que foi digitado (mesmo sem enviar) ── */
+function draftKey(){return 'meumon_draft_'+(targetUid()||'x');}
+function fieldEls(){return $('modal-body').querySelectorAll('input[id^="f-"],select[id^="f-"]');}
+function onModalInput(e){if(e&&e.target&&e.target.id==='f-bio-peso')calcImcLive();if(modalMode==='add')saveDraft();}
+function saveDraft(){try{const o={};fieldEls().forEach(el=>{o[el.id]=el.type==='checkbox'?el.checked:el.value;});localStorage.setItem(draftKey(),JSON.stringify(o));}catch(e){}}
+function restoreDraft(){let o;try{o=JSON.parse(localStorage.getItem(draftKey())||'null');}catch(e){o=null;}if(o){fieldEls().forEach(el=>{if(el.id in o){if(el.type==='checkbox')el.checked=o[el.id];else el.value=o[el.id];}});}
+  if($('f-dose-marca'))toggleOutra('f-dose-marca','f-dose-marca-outra');calcImcLive();}
+function clearDraftPrefix(pfx){let o;try{o=JSON.parse(localStorage.getItem(draftKey())||'null');}catch(e){o=null;}if(!o)return;Object.keys(o).forEach(k=>{if(k.indexOf(pfx)===0)delete o[k];});localStorage.setItem(draftKey(),JSON.stringify(o));}
+/* ── botão Limpar (por aba) ── */
+function limparAba(kind){const pane=$('pane-'+kind);if(!pane)return;
+  pane.querySelectorAll('input,select').forEach(el=>{if(el.type==='date')el.value=el.dataset.def||isoDate(new Date());else if(el.tagName==='SELECT')el.selectedIndex=0;else el.value='';});
+  if(kind==='bio')calcImcLive();
+  if(kind==='dose'){const o=$('f-dose-marca-outra');if(o){o.style.display='none';o.value='';}}
+  editIds[kind]=null;clearDraftPrefix('f-'+kind+'-');saveDraft();}
+/* ── abrir modal já preenchido para EDITAR um registro salvo ── */
+function fillEdit(kind,r){if(!r)return;const set=(id,v)=>{if($(id))$(id).value=(v==null?'':v);};
+  if(kind==='pes'){set('f-pes-data',r.data);set('f-pes-peso',r.peso);set('f-pes-obs',r.obs);}
+  else if(kind==='med'){set('f-med-data',r.data);medKeys.forEach(k=>set('f-med-'+k,r[k]));}
+  else if(kind==='bio'){set('f-bio-data',r.data);set('f-bio-peso',r.peso);set('f-bio-gpct',r.gordPct!=null?+(r.gordPct*100).toFixed(2):'');set('f-bio-gkg',r.gordKg);set('f-bio-mtot',r.massaMuscTotal);set('f-bio-mesq',r.massaMuscEsq);set('f-bio-agua',r.aguaPct!=null?+(r.aguaPct*100).toFixed(2):'');set('f-bio-visc',r.gordVisceral);calcImcLive();}
+  else if(kind==='dose'){set('f-dose-data',r.data);set('f-dose-val',r.dose);set('f-dose-obs',r.obs);const known=MARCAS.includes(r.marca||''),sel=$('f-dose-marca');if(sel){sel.value=known?r.marca:'__outra__';toggleOutra('f-dose-marca','f-dose-marca-outra');if(!known&&$('f-dose-marca-outra'))$('f-dose-marca-outra').value=r.marca||'';}}
+  editIds[kind]=r.id;}
+function editPeso(id){const r=(_cur.diario||[]).find(x=>String(x.id)===String(id));if(r)openModal({kind:'pes',row:r});}
+function editMed(id){const r=(_cur.medidas||[]).find(x=>String(x.id)===String(id));if(r)openModal({kind:'med',row:r});}
+function editBio(id){const r=(_cur.bioimpedancia||[]).find(x=>String(x.id)===String(id));if(r)openModal({kind:'bio',row:r});}
+function editDose(id){const r=(_cur.doses||[]).find(x=>String(x.id)===String(id));if(r)openModal({kind:'dose',row:r});}
 function switchTab(btn){document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));btn.classList.add('on');document.querySelectorAll('.tab-pane').forEach(p=>p.classList.remove('on'));$('pane-'+btn.dataset.p).classList.add('on');}
 function closeModal(){$('modal-ov').classList.remove('on');}
 const num=id=>{const v=$(id).value;return v===''?null:parseFloat(v);};
 async function savePeso(){
   const data=$('f-pes-data').value;if(!data)return alert('Informe a data.');
-  const {error}=await sb.from('pesagens').upsert({user_id:targetUid(),data,peso:num('f-pes-peso'),obs:$('f-pes-obs').value||null},{onConflict:'user_id,data'});
-  if(error)return alert('Erro: '+error.message);closeModal();await loadAndRender(targetUid());
+  const row={user_id:targetUid(),data,peso:num('f-pes-peso'),obs:$('f-pes-obs').value||null};
+  const {error}=editIds.pes?await sb.from('pesagens').update(row).eq('id',editIds.pes):await sb.from('pesagens').upsert(row,{onConflict:'user_id,data'});
+  if(error)return alert('Erro: '+error.message);
+  clearDraftPrefix('f-pes-');editIds.pes=null;closeModal();await loadAndRender(targetUid());
 }
 async function saveDose(){
   const data=$('f-dose-data').value;if(!data)return alert('Informe a data.');
   const marca=readMarca('f-dose-marca','f-dose-marca-outra');if(!marca)return alert('Selecione a marca.');
   const dose=$('f-dose-val').value.trim();if(!dose)return alert('Informe a dose (ex.: 2,5mg).');
-  const {error}=await sb.from('doses').upsert({user_id:targetUid(),data,marca,dose,obs:$('f-dose-obs').value||null},{onConflict:'user_id,data'});
-  if(error)return alert('Erro: '+error.message);closeModal();await loadAndRender(targetUid());
+  const row={user_id:targetUid(),data,marca,dose,obs:$('f-dose-obs').value||null};
+  const {error}=editIds.dose?await sb.from('doses').update(row).eq('id',editIds.dose):await sb.from('doses').upsert(row,{onConflict:'user_id,data'});
+  if(error)return alert('Erro: '+error.message);
+  clearDraftPrefix('f-dose-');editIds.dose=null;closeModal();await loadAndRender(targetUid());
 }
 async function saveMed(){
   const data=$('f-med-data').value;if(!data)return alert('Informe a data.');
   const row={user_id:targetUid(),data};medKeys.forEach(k=>row[camelToSnake[k]]=num('f-med-'+k));
-  const {error}=await sb.from('medidas').upsert(row,{onConflict:'user_id,data'});
-  if(error)return alert('Erro: '+error.message);closeModal();await loadAndRender(targetUid());
+  const {error}=editIds.med?await sb.from('medidas').update(row).eq('id',editIds.med):await sb.from('medidas').upsert(row,{onConflict:'user_id,data'});
+  if(error)return alert('Erro: '+error.message);
+  clearDraftPrefix('f-med-');editIds.med=null;closeModal();await loadAndRender(targetUid());
 }
 async function saveBio(){
   const data=$('f-bio-data').value;if(!data)return alert('Informe a data.');
   let imc=num('f-bio-imc');const peso=num('f-bio-peso');if(imc==null&&peso&&viewProfile.altura)imc=+(peso/(viewProfile.altura*viewProfile.altura)).toFixed(2);
   const gpct=num('f-bio-gpct'),agua=num('f-bio-agua');
   const row={user_id:targetUid(),data,peso,imc,gord_pct:gpct!=null?gpct/100:null,gord_kg:num('f-bio-gkg'),massa_musc_total:num('f-bio-mtot'),massa_musc_esq:num('f-bio-mesq'),agua_pct:agua!=null?agua/100:null,gord_visceral:num('f-bio-visc')};
-  const {error}=await sb.from('bioimpedancia').upsert(row,{onConflict:'user_id,data'});
-  if(error)return alert('Erro: '+error.message);closeModal();await loadAndRender(targetUid());
+  const {error}=editIds.bio?await sb.from('bioimpedancia').update(row).eq('id',editIds.bio):await sb.from('bioimpedancia').upsert(row,{onConflict:'user_id,data'});
+  if(error)return alert('Erro: '+error.message);
+  clearDraftPrefix('f-bio-');editIds.bio=null;closeModal();await loadAndRender(targetUid());
 }
 
 /* ═══════════ CONFIG (editar perfil) ═══════════ */
@@ -1265,17 +1345,19 @@ function openConfig(){
     '<div class="field full"><label>Dose / Marca</label><div style="font-size:12px;color:var(--muted);padding:2px 0">Gerencie no ➕ → aba 💉 Dose (histórico de mudanças). Atual: <b>'+(curDoseGlobal||'—')+'</b></div></div>'+
     '<div class="field"><label>Dia aplicação 💉</label>'+diaSel('cf-diaap',p.dia_aplicacao??6)+'</div>'+
     '<div class="field"><label>Dia medidas 📐</label>'+diaSel('cf-diamed',p.dia_medidas??6)+'</div>'+
-    '<div class="field"><label>Dia composição 🧬</label>'+diaSel('cf-diabio',p.dia_bio??6)+'</div>'+
-    '<div class="field full"><label>Seções</label><div class="checks"><label class="chk'+(p.usa_bio?' on':'')+'"><input type="checkbox" id="cf-usabio" '+(p.usa_bio?'checked':'')+' onchange="this.parentNode.classList.toggle(\'on\',this.checked)"> 🧬 Composição Corporal</label></div></div>'+
+    '<div class="field"><label>Bioimpedância 🧬 — frequência</label><select id="cf-freqbio" onchange="toggleFreqBio(\'cf\')"><option value="semanal"'+((p.bio_freq||'semanal')==='semanal'?' selected':'')+'>1x na semana</option><option value="mensal"'+(p.bio_freq==='mensal'?' selected':'')+'>1x no mês</option></select></div>'+
+    '<div class="field" id="cf-diabio-wrap"><label>Dia da bioimpedância 🧬</label>'+diaSel('cf-diabio',p.dia_bio??6)+'</div>'+
+    '<div class="field full"><label>Seções</label><div class="checks"><label class="chk'+(p.usa_bio?' on':'')+'"><input type="checkbox" id="cf-usabio" '+(p.usa_bio?'checked':'')+' onchange="this.parentNode.classList.toggle(\'on\',this.checked)"> 🧬 Bioimpedância</label></div></div>'+
     '<div class="field full"><label>Medidas acompanhadas</label><div class="checks" id="cf-medchecks">'+medChecks+'</div></div>'+
     '</div><button class="btn" onclick="saveConfig()">Salvar alterações</button>';
+  toggleFreqBio('cf');
   $('modal-ov').classList.add('on');
 }
 async function saveConfig(){
   const ativas=[...$('cf-medchecks').querySelectorAll('input:checked')].map(i=>i.value);
-  const upd={nome:$('cf-nome').value.trim(),sexo:$('cf-sexo').value,tema:$('cf-sexo').value==='M'?'verde':'rosa',altura:parseFloat($('cf-altura').value)||null,data_inicio:$('cf-inicio').value||null,peso_inicial:parseFloat($('cf-pini').value)||null,meta:parseFloat($('cf-meta').value)||null,dia_aplicacao:+$('cf-diaap').value,dia_medidas:+$('cf-diamed').value,dia_bio:+$('cf-diabio').value,usa_bio:$('cf-usabio').checked,medidas_ativas:ativas};
+  const upd={nome:$('cf-nome').value.trim(),sexo:$('cf-sexo').value,tema:$('cf-sexo').value==='M'?'verde':'rosa',altura:parseFloat($('cf-altura').value)||null,data_inicio:$('cf-inicio').value||null,peso_inicial:parseFloat($('cf-pini').value)||null,meta:parseFloat($('cf-meta').value)||null,dia_aplicacao:+$('cf-diaap').value,dia_medidas:+$('cf-diamed').value,dia_bio:+$('cf-diabio').value,bio_freq:$('cf-freqbio')?$('cf-freqbio').value:'semanal',usa_bio:$('cf-usabio').checked,medidas_ativas:ativas};
   const uid=targetUid();
-  const {error}=await sb.from('perfis').update(upd).eq('user_id',uid);
+  const {error}=await perfisWrite('update',upd,uid);
   if(error){authMsg('cf-msg','err','Erro: '+error.message);return;}
   if(uid===currentUser.id)myProfile={...myProfile,...upd};closeModal();await loadAndRender(uid);
 }
